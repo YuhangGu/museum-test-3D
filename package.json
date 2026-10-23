@@ -1,0 +1,30 @@
+{
+  "name": "museum-3d-platform",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"npm run dev -w @museum/api\" \"npm run dev -w @museum/web\"",
+    "dev:demo": "MUSEUM_DEMO_MODE=true npm run dev",
+    "models": "node scripts/generate-models.mjs",
+    "db:migrate": "npm run migrate -w @museum/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "build": "npm run build --workspaces --if-present",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "concurrently": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-vue": "^10.0.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}
