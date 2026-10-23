@@ -1,0 +1,21 @@
+{
+  "name": "@museum/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/apps/api/src/index.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx src/database/migrate.ts"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^11.0.0",
+    "pg": "^8.0.0",
+    "dotenv": "^17.0.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.0.0"
+  }
+}
