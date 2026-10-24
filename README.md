@@ -4,6 +4,8 @@ A standalone Vue 3 / TypeScript / Three.js / MapLibre prototype, with Fastify, P
 
 The collection contains three different models: an interpretive Salzburg-region Alpine farmhouse, an unfurnished realistic house with a complete interior layout (no real-world location was supplied), and the Devonaboy Jome Masjidi model, whose real-world reference is Andijan, Uzbekistan ([model reference](https://maskanlar.uz/uz/places/devonaboy-jome-masjidi)). The “See another chapter” switch compares each current model with the same illustrative 1800 farmhouse model; this is a visual stand-in, not a historical reconstruction of the house or mosque. All three map markers are kept around Salzburg for this collection demonstration; the mosque marker remains at its original Salzburg demo coordinate. OpenStreetMap provides geographic context and is not intended for navigation.
 
+For visitor instructions, see the [English user guide](USER_GUIDE.md) or [open the live collection](https://yuhanggu.github.io/museum-test-3D/).
+
 ## Start the complete stack
 
 Install Docker with Compose v2. From this directory:
