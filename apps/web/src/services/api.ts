@@ -5,11 +5,11 @@ const demo = import.meta.env.VITE_DEMO_MODE === "true";
 const demoBuildings: Building[] = [
   {
     id: "20000000-0000-4000-8000-000000000001",
-    name: "The Rivergate House",
+    name: "Salzburg Alpine Farmhouse",
     description:
-      "An imagined merchant’s residence beside the Salzach. Explore its arcaded entrance, limestone walls, and steep copper roof.",
-    longitude: 13.0449,
-    latitude: 47.8013,
+      "An interpretive Salzburg-region farmhouse model with a stable and store on the ground floor, living spaces above, and a hayloft under the roof. The design is illustrative, not a measured reconstruction of a specific historic house.",
+    longitude: 12.95267,
+    latitude: 47.74991,
     thumbnailUrl: null,
     currentModel: {
       id: "10000000-0000-4000-8000-000000000001",
@@ -23,15 +23,15 @@ const demoBuildings: Building[] = [
   },
   {
     id: "20000000-0000-4000-8000-000000000002",
-    name: "The Linden Pavilion",
+    name: "Realistic House (With Interior Structure)",
     description:
-      "A fictional garden pavilion inspired by the region’s quiet courtyards, with a lantern tower and finely framed windows.",
-    longitude: 13.0407,
-    latitude: 47.8035,
+      "A fully modeled house with a complete, unfurnished interior layout. Room divisions, walls, doors, and flooring show the spatial plan and proportions. The source model does not specify a real-world location.",
+    longitude: 12.9531,
+    latitude: 47.7503,
     thumbnailUrl: null,
     currentModel: {
-      id: "10000000-0000-4000-8000-000000000001",
-      url: "models/sample-building.glb",
+      id: "10000000-0000-4000-8000-000000000003",
+      url: "models/realistic-house-with-interior.glb",
     },
     historicalModel: {
       id: "10000000-0000-4000-8000-000000000002",
@@ -41,15 +41,15 @@ const demoBuildings: Building[] = [
   },
   {
     id: "20000000-0000-4000-8000-000000000003",
-    name: "The Bellmaker’s Hall",
+    name: "Devonaboy Jome Masjidi",
     description:
-      "An imagined workshop and meeting hall celebrating the craft traditions of an Alpine city.",
-    longitude: 13.0508,
-    latitude: 47.7983,
+      "A 3D model of the real Devonaboy Jome Masjidi in Andijan, Uzbekistan. It is located at Mustaqillik Street 14 (40.788741° N, 72.340649° E). The supplied model does not include room names or survey metadata.",
+    longitude: 12.9519,
+    latitude: 47.7504,
     thumbnailUrl: null,
     currentModel: {
-      id: "10000000-0000-4000-8000-000000000001",
-      url: "models/sample-building.glb",
+      id: "10000000-0000-4000-8000-000000000004",
+      url: "models/devonaboy_web.glb",
     },
     historicalModel: {
       id: "10000000-0000-4000-8000-000000000002",
@@ -63,12 +63,12 @@ const demoAnnotations: Annotation[] = [
   {
     id: "feature-0",
     buildingId: demoBuildings[0].id,
-    title: "The copper roof",
+    title: "Hay and seasonal storage",
     description:
-      "A steep roof sheds Alpine rain and snow. The green surface suggests weathered copper. This geometry is an original demonstration design.",
+      "The upper loft stores hay and farm supplies, with a smaller sleeping space beneath the steep timber roof. The room arrangement is an original interpretation.",
     x: -0.9,
-    y: 4.2,
-    z: 1.2,
+    y: 5.1,
+    z: 0.4,
     historicalPeriod: "Illustrative present-day model",
     imageUrl: null,
     sourceReference: "Original procedural demonstration; not a historical source.",
@@ -76,9 +76,9 @@ const demoAnnotations: Annotation[] = [
   {
     id: "feature-1",
     buildingId: demoBuildings[0].id,
-    title: "The main entrance",
+    title: "Stable and provisions store",
     description:
-      "A recessed doorway marks the central axis of the house. Tap and rotate to see how the entrance relates to the tower above.",
+      "The ground floor is divided between animal stalls and a separate provisions bay, with broad timber doors opening to the farmyard.",
     x: 0,
     y: 0.9,
     z: 1.62,
@@ -89,9 +89,9 @@ const demoAnnotations: Annotation[] = [
   {
     id: "feature-2",
     buildingId: demoBuildings[0].id,
-    title: "The limestone facade",
+    title: "Living floor and timber balcony",
     description:
-      "Warm stone walls and repeated windows give the building its rhythm. No claim of archaeological or historical accuracy is made.",
+      "The warmer plastered living level sits above the stable, with a deep wooden balcony and window boxes typical of Alpine farmhouses.",
     x: 2.01,
     y: 2,
     z: 1.15,
@@ -123,6 +123,10 @@ export const api = {
       : get<Building>(`/api/buildings/${id}`),
   annotations: (id: string) =>
     demo
-      ? Promise.resolve(demoAnnotations.map((annotation) => ({ ...annotation, buildingId: id })))
+      ? Promise.resolve(
+          id === demoBuildings[0].id
+            ? demoAnnotations.map((annotation) => ({ ...annotation, buildingId: id }))
+            : [],
+        )
       : get<Annotation[]>(`/api/buildings/${id}/annotations`),
 };

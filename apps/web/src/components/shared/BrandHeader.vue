@@ -6,7 +6,7 @@
         >layers<span class="brand-sub">ARCHITECTURAL HERITAGE</span></span
       ></a
     ><span class="edition"
-      >SALZBURG, AT<br /><b>A museum without walls</b></span
+      >GLOBAL COLLECTION<br /><b>A museum without walls</b></span
     >
   </header>
 </template>
