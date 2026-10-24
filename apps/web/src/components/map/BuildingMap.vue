@@ -15,54 +15,27 @@ onMounted(() => {
   try {
     map = new maplibregl.Map({
       container: container.value!,
-      center: [13.045, 47.801],
-      zoom: 14.7,
-      minZoom: 12,
+      center: [12.95267, 47.74991],
+      zoom: 15.2,
+      minZoom: 13,
       maxZoom: 18,
       attributionControl: false,
       style: {
         version: 8,
-        sources: { land: { type: "geojson", data: "/schematic-map.geojson" } },
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution:
+              '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+          },
+        },
         layers: [
           {
-            id: "background",
-            type: "background",
-            paint: { "background-color": "#e9e8de" },
-          },
-          {
-            id: "parks",
-            type: "fill",
-            source: "land",
-            filter: ["==", "kind", "park"],
-            paint: { "fill-color": "#d4ddc5" },
-          },
-          {
-            id: "blocks",
-            type: "fill",
-            source: "land",
-            filter: ["==", "kind", "block"],
-            paint: { "fill-color": "#dbd8cc", "fill-outline-color": "#d1cdbf" },
-          },
-          {
-            id: "river",
-            type: "line",
-            source: "land",
-            filter: ["==", "kind", "river"],
-            paint: { "line-color": "#a9c9c7", "line-width": 70 },
-          },
-          {
-            id: "streets",
-            type: "line",
-            source: "land",
-            filter: ["==", "kind", "street"],
-            paint: { "line-color": "#f6f3e9", "line-width": 7 },
-          },
-          {
-            id: "bridges",
-            type: "line",
-            source: "land",
-            filter: ["==", "kind", "bridge"],
-            paint: { "line-color": "#f6f3e9", "line-width": 10 },
+            id: "openstreetmap",
+            type: "raster",
+            source: "osm",
           },
         ],
       },
@@ -70,6 +43,10 @@ onMounted(() => {
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
       "top-right",
+    );
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: false }),
+      "bottom-right",
     );
     map.on("error", () => {
       failure.value = true;
@@ -108,26 +85,48 @@ watch(
   () => props.selected,
   () => {
     update();
-    const b = props.buildings.find((b) => b.id === props.selected);
-    if (b)
-      map?.easeTo({
-        center: [b.longitude, b.latitude],
-        offset: [0, -100],
-        duration: 600,
-      });
   },
 );
+function focusBuilding(id: string) {
+  const building = props.buildings.find((item) => item.id === id);
+  if (building)
+    map?.easeTo({
+      center: [building.longitude, building.latitude],
+      offset: [0, -100],
+      duration: 600,
+    });
+}
 function fitCollection(duration = 600) {
   if (!map || !container.value || !props.buildings.length) return;
+  const localCollection = props.buildings.filter(
+    (building) =>
+      Math.abs(building.longitude - 12.95267) < 1 &&
+      Math.abs(building.latitude - 47.74991) < 1,
+  );
+  const visibleBuildings = localCollection.length
+    ? localCollection
+    : props.buildings;
   const bounds = new maplibregl.LngLatBounds();
-  props.buildings.forEach(b => bounds.extend([b.longitude,b.latitude]));
-  const {width,height} = container.value.getBoundingClientRect();
-  map.fitBounds(bounds, {padding: width < 700
-    ? {top: Math.min(330,height*.4),bottom: Math.min(285,height*.34),left:50,right:50}
-    : {top:140,bottom:120,left:440,right:100},maxZoom:15,duration});
+  visibleBuildings.forEach((b) => bounds.extend([b.longitude, b.latitude]));
+  const { width, height } = container.value.getBoundingClientRect();
+  map.fitBounds(bounds, {
+    padding:
+      width < 700
+        ? {
+            top: Math.min(330, height * 0.4),
+            bottom: Math.min(285, height * 0.34),
+            left: 50,
+            right: 50,
+          }
+        : { top: 140, bottom: 120, left: 440, right: 100 },
+    maxZoom: 15,
+    duration,
+  });
 }
-function reset() { fitCollection(); }
-defineExpose({ reset });
+function reset() {
+  fitCollection();
+}
+defineExpose({ reset, focusBuilding });
 onUnmounted(() => {
   markers.forEach((m) => m.remove());
   map?.remove();
@@ -137,11 +136,9 @@ onUnmounted(() => {
   <div
     ref="container"
     class="map-canvas"
-    aria-label="Map of three fictional buildings around Salzburg"
+    aria-label="OpenStreetMap collection view. Building markers are displayed around Salzburg."
   />
-  <div class="map-place city-label">SALZBURG</div>
-  <div class="map-place river-label">S A L Z A C H</div>
   <p v-if="failure" class="map-warning">
-    Map unavailable. Choose a building from the list below.
+    Map unavailable. Open the BUILDINGS drawer on the left to choose a model.
   </p>
 </template>

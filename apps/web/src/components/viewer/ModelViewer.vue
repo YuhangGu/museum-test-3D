@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Building, Annotation } from "@museum/shared";
 import { assetUrl } from "../../services/api";
@@ -9,8 +10,14 @@ const props = defineProps<{
   building: Building;
   annotations: Annotation[];
   compare: boolean;
+  section: number;
+  sectionAxis: "front" | "top";
+  frontAxis: "x" | "z";
 }>();
-const emit = defineEmits<{ annotation: [a: Annotation] }>();
+const emit = defineEmits<{
+  annotation: [a: Annotation];
+  modelBounds: [bounds: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } }];
+}>();
 const host = ref<HTMLDivElement>(),
   loading = ref(true),
   error = ref(""),
@@ -31,9 +38,32 @@ let renderer: THREE.WebGLRenderer | undefined,
   frame = 0,
   disposed = false,
   historyRequested = false;
+let roomHighlight: THREE.Box3Helper | undefined,
+  roomHighlightStarted = 0;
 const home = new THREE.Vector3(),
   target = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
+let modelBounds: THREE.Box3 | undefined;
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
+function loadGLTF(url: string) {
+  const loader = new GLTFLoader();
+  loader.setDRACOLoader(dracoLoader);
+  return loader.loadAsync(url);
+}
+// Front is +Z; the top-down mode clips from the roof toward the ground.
+const sectionPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 2.8);
+function updateSection() {
+  const axis = props.sectionAxis === "top" ? "y" : props.frontAxis;
+  const min = modelBounds?.min[axis] ?? (axis === "y" ? 0 : -1);
+  const max = modelBounds?.max[axis] ?? (axis === "y" ? 1 : 1);
+  const threshold = max + (min - max) * THREE.MathUtils.clamp(props.section, 0, 100) / 100;
+  if (props.sectionAxis === "top") sectionPlane.normal.set(0, -1, 0);
+  else if (props.frontAxis === "x") sectionPlane.normal.set(-1, 0, 0);
+  else sectionPlane.normal.set(0, 0, -1);
+  sectionPlane.constant = threshold;
+}
+watch(() => [props.section, props.sectionAxis], updateSection);
 function disposeObject(object: THREE.Object3D) {
   object.traverse((child) => {
     if (child instanceof THREE.Mesh) {
@@ -82,15 +112,40 @@ function reset() {
   controls.update();
   controls.enableDamping = damping;
 }
-defineExpose({ reset });
+function highlightRoom(bounds: { min: number[]; max: number[] }) {
+  if (!scene) return;
+  if (roomHighlight) {
+    scene.remove(roomHighlight);
+    roomHighlight.geometry.dispose();
+    const materials = Array.isArray(roomHighlight.material)
+      ? roomHighlight.material
+      : [roomHighlight.material];
+    materials.forEach((material) => material.dispose());
+  }
+  roomHighlight = new THREE.Box3Helper(
+    new THREE.Box3(
+      new THREE.Vector3(...(bounds.min as [number, number, number])),
+      new THREE.Vector3(...(bounds.max as [number, number, number])),
+    ),
+    0xffd72f,
+  );
+  const material = roomHighlight.material as THREE.LineBasicMaterial;
+  material.depthTest = false;
+  material.depthWrite = false;
+  material.transparent = true;
+  material.toneMapped = false;
+  material.opacity = 1;
+  roomHighlight.renderOrder = 10_000;
+  roomHighlightStarted = performance.now();
+  scene.add(roomHighlight);
+}
+defineExpose({ reset, highlightRoom });
 async function loadHistory() {
   if (historyRequested || !props.building.historicalModel) return;
   historyRequested = true;
   historyLoading.value = true;
   try {
-    const gltf = await new GLTFLoader().loadAsync(
-      assetUrl(props.building.historicalModel.url),
-    );
+    const gltf = await loadGLTF(assetUrl(props.building.historicalModel.url));
     if (disposed) {
       disposeObject(gltf.scene);
       return;
@@ -120,6 +175,20 @@ function resize() {
 function render() {
   if (disposed || !renderer) return;
   frame = requestAnimationFrame(render);
+  if (roomHighlight) {
+    const elapsed = performance.now() - roomHighlightStarted;
+    if (elapsed >= 2000) {
+      scene.remove(roomHighlight);
+      roomHighlight.geometry.dispose();
+      const materials = Array.isArray(roomHighlight.material)
+        ? roomHighlight.material
+        : [roomHighlight.material];
+      materials.forEach((material) => material.dispose());
+      roomHighlight = undefined;
+    } else {
+      roomHighlight.visible = Math.floor(elapsed / 150) % 2 === 0;
+    }
+  }
   controls?.update();
   const w = host.value!.clientWidth,
     h = host.value!.clientHeight;
@@ -147,6 +216,7 @@ function render() {
       y: (-0.5 * p.y + 0.5) * h,
       visible:
         !props.compare &&
+        props.section === 0 &&
         p.z > -1 &&
         p.z < 1 &&
         Math.abs(p.x) < 1 &&
@@ -158,6 +228,7 @@ function render() {
 onMounted(async () => {
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.localClippingEnabled = true;
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -178,18 +249,33 @@ onMounted(async () => {
     resize();
     if (!props.building.currentModel)
       throw new Error("No 3D model is available for this building.");
-    const gltf = await new GLTFLoader().loadAsync(
-      assetUrl(props.building.currentModel.url),
-    );
+    const gltf = await loadGLTF(assetUrl(props.building.currentModel.url));
     if (disposed) {
       disposeObject(gltf.scene);
       return;
     }
     currentRoot = gltf.scene;
+    currentRoot.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(child.material)
+        ? child.material
+        : [child.material];
+      materials.forEach((material) => {
+        material.clippingPlanes = [sectionPlane];
+        material.clipShadows = true;
+      });
+    });
+    updateSection();
     scene.add(currentRoot);
     const box = new THREE.Box3().setFromObject(currentRoot);
     if (box.isEmpty())
       throw new Error("The model contains no visible geometry.");
+    modelBounds = box.clone();
+    emit("modelBounds", {
+      min: { x: box.min.x, y: box.min.y, z: box.min.z },
+      max: { x: box.max.x, y: box.max.y, z: box.max.z },
+    });
+    updateSection();
     box.getCenter(target);
     const size = box.getSize(new THREE.Vector3());
     const radius = size.length() / 2;
@@ -199,7 +285,7 @@ onMounted(async () => {
     home
       .copy(target)
       .add(
-        new THREE.Vector3(1, 0.52, 1.6).normalize().multiplyScalar(distance),
+        new THREE.Vector3(0.28, 0.42, 1).normalize().multiplyScalar(distance),
       );
     camera.near = Math.max(0.01, radius / 1000);
     camera.far = Math.max(100, radius * 100);
@@ -227,8 +313,16 @@ onUnmounted(() => {
   cancelAnimationFrame(frame);
   observer?.disconnect();
   controls?.dispose();
+  dracoLoader.dispose();
   if (scene) disposeObject(scene);
   if (historical) disposeObject(historical);
+  roomHighlight?.geometry.dispose();
+  if (roomHighlight) {
+    const materials = Array.isArray(roomHighlight.material)
+      ? roomHighlight.material
+      : [roomHighlight.material];
+    materials.forEach((material) => material.dispose());
+  }
   renderer?.domElement.removeEventListener("webglcontextlost", onContextLost);
   renderer?.dispose();
   renderer?.domElement.remove();

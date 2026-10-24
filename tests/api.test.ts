@@ -16,11 +16,13 @@ import { resolveModel, parseRange } from "../apps/api/src/storage/files.js";
 import {
   currentId,
   historicalId,
+  houseModelId,
+  mosqueModelId,
   fixtures,
 } from "../apps/api/src/database/fixtures.js";
 process.env.NODE_ENV = "test";
 const storage = resolve("storage/models");
-test("API metadata, shared assets, annotations and structured failures", async () => {
+test("API metadata, distinct building models, annotations and structured failures", async () => {
   const app = await createApp(demoRepository(), storage, true);
   try {
     const health = await app.inject("/api/health");
@@ -31,8 +33,18 @@ test("API metadata, shared assets, annotations and structured failures", async (
       new Set(
         list.map((b: { currentModel: { id: string } }) => b.currentModel.id),
       ).size,
-      1,
+      3,
     );
+    assert.equal(list[1].name, "Realistic House (With Interior Structure)");
+    assert.equal(
+      list[1].historicalModel.id,
+      "10000000-0000-4000-8000-000000000002",
+    );
+    assert.equal(list[2].historicalModel.id, list[1].historicalModel.id);
+    assert.equal(list[1].historicalYear, 1800);
+    assert.equal(list[2].name, "Devonaboy Jome Masjidi");
+    assert.equal(list[2].latitude, 47.7504);
+    assert.equal(list[2].longitude, 12.9519);
     assert.equal(
       new Set(list.map((b: { longitude: number }) => b.longitude)).size,
       3,
@@ -46,6 +58,19 @@ test("API metadata, shared assets, annotations and structured failures", async (
     ).json().data;
     assert.equal(annotations.length, 3);
     assert.equal(typeof annotations[0].x, "number");
+    assert.equal(
+      (await app.inject(`/api/buildings/${fixtures[1].id}/annotations`)).json()
+        .data.length,
+      0,
+    );
+    for (const modelId of [houseModelId, mosqueModelId]) {
+      const model = await app.inject({
+        url: `/api/models/${modelId}/file`,
+        headers: { range: "bytes=0-3" },
+      });
+      assert.equal(model.statusCode, 206);
+      assert.equal(model.rawPayload.toString(), "glTF");
+    }
     assert.equal(
       (await app.inject("/api/buildings/not-a-uuid")).statusCode,
       400,
@@ -171,9 +196,13 @@ test("Original GLBs are valid containers with identical foundation coordinates a
   }
   assert.deepEqual(docs[0].accessors[0], docs[1].accessors[0]);
   assert.ok(
-    docs[0].nodes.some((n: { name: string }) => n.name === "Lantern tower"),
+    docs[0].nodes.some((n: { name: string }) =>
+      n.name.includes("larch-shingle roof"),
+    ),
   );
   assert.ok(
-    docs[1].nodes.some((n: { name: string }) => n.name === "Early chimney"),
+    docs[1].nodes.some((n: { name: string }) =>
+      n.name.includes("Old roof and deep eaves"),
+    ),
   );
 });

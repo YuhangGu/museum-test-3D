@@ -4,6 +4,8 @@ import {
   features,
   currentId,
   historicalId,
+  houseModelId,
+  mosqueModelId,
 } from "../database/fixtures.js";
 export interface ModelRecord {
   id: string;
@@ -43,6 +45,7 @@ export function postgresRepository(url: string): MuseumRepository {
       return row ? serialize(row) : null;
     },
     async annotations(id) {
+      if (id !== fixtures[0].id) return [];
       return (
         await pool.query(
           'SELECT id, building_id AS "buildingId",title,description,position_x AS x,position_y AS y,position_z AS z,historical_period AS "historicalPeriod",image_url AS "imageUrl",source_reference AS "sourceReference" FROM annotations WHERE building_id=$1 ORDER BY id',
@@ -69,7 +72,13 @@ export function demoRepository(): MuseumRepository {
   const buildings = fixtures.map((b) => ({
     ...b,
     thumbnailUrl: null,
-    currentModel: asset(currentId),
+    currentModel: asset(
+      b.id === fixtures[1].id
+        ? houseModelId
+        : b.id === fixtures[2].id
+          ? mosqueModelId
+          : currentId,
+    ),
     historicalModel: asset(historicalId),
     historicalYear: 1800,
   }));
@@ -82,6 +91,7 @@ export function demoRepository(): MuseumRepository {
       return buildings.find((b) => b.id === id) || null;
     },
     async annotations(id) {
+      if (id !== fixtures[0].id) return [];
       return features.map((a, i) => ({
         ...a,
         id: `feature-${i}`,
@@ -89,11 +99,23 @@ export function demoRepository(): MuseumRepository {
         historicalPeriod: a.period,
         imageUrl: null,
         sourceReference:
-          "Original procedural demonstration; not a historical source.",
+          "Illustrative Salzburg-region farmhouse model; not historical evidence.",
       }));
     },
     async model(id) {
-      return id === currentId
+      return id === houseModelId
+        ? {
+            id,
+            storage_key: "realistic-house-with-interior.glb",
+            mime_type: "model/gltf-binary",
+          }
+        : id === mosqueModelId
+          ? {
+              id,
+              storage_key: "devonaboy_web.glb",
+              mime_type: "model/gltf-binary",
+            }
+          : id === currentId
         ? {
             id,
             storage_key: "sample-building.glb",

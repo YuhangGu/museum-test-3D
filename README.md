@@ -2,7 +2,7 @@
 
 A standalone Vue 3 / TypeScript / Three.js / MapLibre prototype, with Fastify, PostgreSQL/PostGIS, and server-owned GLB storage. Designed first for a 390 × 844 portrait screen. No React, external model downloads, account system, or runtime asset CDN.
 
-The three Salzburg-area buildings are **fictional**. All reuse the same current GLB and the same illustrative historical GLB. The 1800 version is **not a historically accurate reconstruction**. The locally stored map is deliberately schematic; it is not for navigation and does not claim street-level accuracy.
+The collection contains three different models: an interpretive Salzburg-region Alpine farmhouse, an unfurnished realistic house with a complete interior layout (no real-world location was supplied), and the Devonaboy Jome Masjidi model, whose real-world reference is Andijan, Uzbekistan ([model reference](https://maskanlar.uz/uz/places/devonaboy-jome-masjidi)). The “See another chapter” switch compares each current model with the same illustrative 1800 farmhouse model; this is a visual stand-in, not a historical reconstruction of the house or mosque. All three map markers are kept around Salzburg for this collection demonstration; the mosque marker remains at its original Salzburg demo coordinate. OpenStreetMap provides geographic context and is not intended for navigation.
 
 ## Start the complete stack
 
@@ -68,13 +68,13 @@ npm run dev:demo
 
 ## Replace the sample with photogrammetry
 
-1. Copy an optimized, self-contained GLB into `storage/models` on the server. Models are never copied into apps/web/public or bundled into the frontend.
-2. Insert a new `models` record with a fresh UUID, a storage key relative to the storage directory (such as `rivergate-v2.glb`), original filename, model type `current`, actual file size in bytes, and MIME type `model/gltf-binary`.
-3. Update only the relevant building's `current_model_id`. Do not overwrite the shared sample record unless you intend to change all buildings referencing it. Use new model IDs and filenames for revisions to avoid stale browser caches.
+1. Copy an optimized, self-contained GLB into `storage/models` for API deployments. For the static GitHub Pages preview, also put the GLB in `apps/web/public/models`.
+2. Insert a new `models` record with a fresh UUID, a storage key relative to the storage directory (such as `farmhouse-v2.glb`), original filename, model type `current`, actual file size in bytes, and MIME type `model/gltf-binary`.
+3. Update only the relevant building's `current_model_id`. The current collection assigns a separate model record to each building. Use new model IDs and filenames for revisions to avoid stale browser caches.
 4. Set `historical_model_id` and `historical_year` if a historical model exists, or leave them NULL. Align both models in the same coordinates, scale, and orientation **before** upload. The viewer does not independently center or rescale each model, so comparisons do not drift.
-5. Adjust annotation X/Y/Z values to that model's local coordinates. The supplied convention is +Y up, +Z toward the entrance, origin at ground center, meters. Geometry is preserved; camera position is computed from the model bounds.
+5. Adjust annotation X/Y/Z values to that model's local coordinates. Imported models keep their own scale and orientation; the viewer reads their bounds for framing and section cuts. Set the model's front axis when its entrance direction differs from +Z.
 
-A `.gltf` endpoint is supported for self-contained JSON glTF files using data URIs. Multi-file glTF dependencies are not served by this prototype; package assets as GLB. DRACO/KTX2 decoders are not installed; export standard glTF geometry/textures or add local decoder assets before using compressed formats. Large scans should be decimated and textures resized for mobile devices.
+A `.gltf` endpoint is supported for self-contained JSON glTF files using data URIs. Multi-file glTF dependencies are not served by this prototype; package assets as GLB. A local Draco decoder is included for compressed GLB geometry. Large scans should be decimated and textures resized for mobile devices.
 
 ## Add a building
 
@@ -129,8 +129,8 @@ Manual acceptance flow: use a 390 × 844 viewport, select each of the three mark
 
 ## Layout
 
-`apps/web` holds views, shared/map/viewer components and the API client. `apps/api` holds routes, the repository, migrations, and a confined file storage adapter. `packages/shared` defines frontend/API contracts. `storage/models` is mounted read-only into API containers. `scripts/generate-models.mjs` reproducibly creates both original sample assets.
+`apps/web` holds views, shared/map/viewer components and the API client. `apps/api` holds routes, the repository, migrations, and a confined file storage adapter. `packages/shared` defines frontend/API contracts. `storage/models` is mounted read-only into API containers. `scripts/generate-models.mjs` reproducibly creates the farmhouse and its illustrative historical comparison.
 
 ## Limits
 
-The offline map is schematic, the historical architecture is invented, and all three buildings intentionally share geometry. Real geographic base mapping can be configured in BuildingMap.vue using a licensed MapLibre style/tile provider or a self-hosted tile server. No live geolocation or directions are included. Large photogrammetry models require optimization and real-device memory testing. A generic ground disk assumes the sample model's ground plane; customize/remove it for differently aligned scans. Automated checks cannot substitute for actual phone gesture and Docker persistence testing.
+The OpenStreetMap basemap requires an internet connection and follows the OpenStreetMap tile usage policy. The realistic house model has no source location or room labels; the mosque model does not include room-name or survey metadata. No live geolocation or directions are included. Large models require optimization and real-device memory testing. Automated checks cannot substitute for actual phone gesture and Docker persistence testing.

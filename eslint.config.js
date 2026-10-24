@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import ts from "typescript-eslint";
 import vue from "eslint-plugin-vue";
 export default ts.config(
-  { ignores: ["**/dist/**", "**/node_modules/**"] },
+  { ignores: ["**/dist/**", "**/node_modules/**", "apps/web/public/draco/**"] },
   js.configs.recommended,
   ...ts.configs.recommended,
   ...vue.configs["flat/recommended"],
